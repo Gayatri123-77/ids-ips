@@ -159,7 +159,7 @@ is_running, pid = get_simulator_status()
 
 if is_running:
     st.sidebar.success(f"🟢 Simulator RUNNING (PID: {pid})")
-    if st.sidebar.button("🛑 Stop Simulator", use_container_width=True, type="primary"):
+    if st.sidebar.button("🛑 Stop Simulator", type="primary"):
         proc = st.session_state.simulator_proc
         proc.terminate()
         st.session_state.simulator_proc = None
@@ -175,7 +175,7 @@ with st.sidebar.expander("⚙️ Simulation Parameters", expanded=not is_running
     seed = st.number_input("Random Seed", min_value=1, max_value=999, value=42)
 
 if not is_running:
-    if st.sidebar.button("🚀 Start Simulator Stream", use_container_width=True):
+    if st.sidebar.button("🚀 Start Simulator Stream"):
         cmd = [
             sys.executable,
             "simulateDetector.py",
@@ -192,12 +192,12 @@ if not is_running:
 st.sidebar.markdown("---")
 
 # Data Management Buttons
-if st.sidebar.button("🎲 Regenerate Initial Sample Flows", use_container_width=True):
+if st.sidebar.button("🎲 Regenerate Initial Sample Flows"):
     generate_initial_sample_data()
     st.toast("Sample traffic flows re-generated!", icon="🎲")
     st.rerun()
 
-if st.sidebar.button("🗑️ Clear All Logs", use_container_width=True):
+if st.sidebar.button("🗑️ Clear All Logs"):
     clear_logs()
     st.toast("Logs cleared!", icon="🧹")
     st.rerun()
@@ -443,11 +443,14 @@ with tab3:
                 return "background-color: rgba(88, 166, 255, 0.2); color: #58a6ff; font-weight: bold;"
             return ""
 
-        styled_df = filtered_df.iloc[::-1].style.applymap(
-            highlight_action, subset=["action"]
-        ).format({
-            "confidence": "{:.4f}"
-        })
+        styler = filtered_df.iloc[::-1].style
+        if hasattr(styler, "map"):
+            styled_df = styler.map(highlight_action, subset=["action"])
+        elif hasattr(styler, "applymap"):
+            styled_df = styler.applymap(highlight_action, subset=["action"])
+        else:
+            styled_df = styler
+        styled_df = styled_df.format({"confidence": "{:.4f}"})
 
         st.dataframe(styled_df, use_container_width=True, height=450, hide_index=True)
 
