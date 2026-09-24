@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import random
 import subprocess
 import pandas as pd
 import numpy as np
@@ -26,7 +27,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom Cyberpunk CSS Styling
+# Custom Cyberpunk Styling
 st.markdown("""
 <style>
     .stApp {
@@ -58,16 +59,50 @@ st.markdown("""
 
 
 # ---------------------------------------------------------
-# Helper Functions for Data & Process Management
+# Sample Data Pre-population for Immediate Dashboard Output
 # ---------------------------------------------------------
+def generate_initial_sample_data():
+    """Generates realistic sample traffic flows if log file is empty."""
+    rng = random.Random(42)
+    sample_ips = ["10.0.3.69", "10.0.1.67", "10.0.2.15", "10.0.4.107", "10.0.4.207", "10.0.1.3", "10.0.2.229", "10.0.4.20", "10.0.0.158", "10.0.1.146"]
+    blocked_ips_set = set()
+    rows = []
+
+    base_time = time.time() - 300 # 5 minutes ago
+
+    for i in range(1, 51):
+        t_str = time.strftime("%H:%M:%S", time.localtime(base_time + i * 6))
+        src_ip = rng.choice(sample_ips)
+        true_label = 1 if rng.random() < 0.44 else 0
+        pred_label = true_label if rng.random() < 0.94 else (1 - true_label)
+        confidence = round(rng.uniform(0.78, 1.00), 4)
+
+        if pred_label == 1 and confidence >= 0.5:
+            if src_ip not in blocked_ips_set:
+                blocked_ips_set.add(src_ip)
+                action = "blocked"
+            else:
+                action = "already_blocked"
+        else:
+            action = "allowed"
+
+        rows.append(f"{t_str},{src_ip},{true_label},{pred_label},{confidence:.4f},{action}")
+
+    with open(LOG_FILE, "w") as f:
+        f.write("timestamp,src_ip,true_label,predicted,confidence,action\n")
+        f.write("\n".join(rows) + "\n")
+
+
 def load_log_data():
-    if not os.path.exists(LOG_FILE):
-        return pd.DataFrame(columns=["timestamp", "src_ip", "true_label", "predicted", "confidence", "action"])
+    if not os.path.exists(LOG_FILE) or os.path.getsize(LOG_FILE) < 50:
+        generate_initial_sample_data()
+
     try:
         df = pd.read_csv(LOG_FILE)
         if df.empty or "timestamp" not in df.columns:
-            return pd.DataFrame(columns=["timestamp", "src_ip", "true_label", "predicted", "confidence", "action"])
-        
+            generate_initial_sample_data()
+            df = pd.read_csv(LOG_FILE)
+
         df["confidence"] = pd.to_numeric(df["confidence"], errors="coerce").fillna(0.0)
         df["true_label"] = pd.to_numeric(df["true_label"], errors="coerce").fillna(0).astype(int)
         df["predicted"] = pd.to_numeric(df["predicted"], errors="coerce").fillna(0).astype(int)
@@ -75,7 +110,8 @@ def load_log_data():
         df["action"] = df["action"].astype(str).str.strip()
         return df
     except Exception:
-        return pd.DataFrame(columns=["timestamp", "src_ip", "true_label", "predicted", "confidence", "action"])
+        generate_initial_sample_data()
+        return pd.read_csv(LOG_FILE)
 
 
 def get_simulator_status():
@@ -86,7 +122,6 @@ def get_simulator_status():
 
 
 def unblock_ip(ip_address):
-    """Append an unblock audit action record to synchronized firewall log."""
     timestamp = time.strftime("%H:%M:%S")
     log_line = f"{timestamp},{ip_address},0,0,1.0000,unblocked\n"
     with open(LOG_FILE, "a") as f:
@@ -94,7 +129,6 @@ def unblock_ip(ip_address):
 
 
 def clear_logs():
-    """Reset the log file with standard header."""
     with open(LOG_FILE, "w") as f:
         f.write("timestamp,src_ip,true_label,predicted,confidence,action\n")
 
@@ -119,7 +153,7 @@ if enable_refresh and HAS_AUTOREFRESH:
 
 st.sidebar.markdown("---")
 
-# Simulator Process Controller
+# Detector Simulator Process Controller
 st.sidebar.subheader("⚡ Detector Simulator Controls")
 is_running, pid = get_simulator_status()
 
@@ -141,7 +175,7 @@ with st.sidebar.expander("⚙️ Simulation Parameters", expanded=not is_running
     seed = st.number_input("Random Seed", min_value=1, max_value=999, value=42)
 
 if not is_running:
-    if st.sidebar.button("🚀 Start Simulator", use_container_width=True):
+    if st.sidebar.button("🚀 Start Simulator Stream", use_container_width=True):
         cmd = [
             sys.executable,
             "simulateDetector.py",
@@ -157,10 +191,15 @@ if not is_running:
 
 st.sidebar.markdown("---")
 
-# Log Management
-if st.sidebar.button("🗑️ Clear Log Data", use_container_width=True):
+# Data Management Buttons
+if st.sidebar.button("🎲 Regenerate Initial Sample Flows", use_container_width=True):
+    generate_initial_sample_data()
+    st.toast("Sample traffic flows re-generated!", icon="🎲")
+    st.rerun()
+
+if st.sidebar.button("🗑️ Clear All Logs", use_container_width=True):
     clear_logs()
-    st.toast("Log file cleared successfully!", icon="🧹")
+    st.toast("Logs cleared!", icon="🧹")
     st.rerun()
 
 
@@ -172,7 +211,7 @@ st.caption("Real-Time Machine Learning Intrusion Detection & Automated Firewall 
 
 df = load_log_data()
 
-# Calculate Active Blocked IPs
+# Active Blocked IPs Calculation
 if not df.empty:
     latest_ip_actions = df.groupby("src_ip").last()
     active_blocked_ips = latest_ip_actions[latest_ip_actions["action"].isin(["blocked", "already_blocked"])].index.tolist()
@@ -243,93 +282,90 @@ tab1, tab2, tab3 = st.tabs([
 
 # TAB 1: Live Threat Analytics
 with tab1:
-    if df.empty:
-        st.info("💡 No flow data available yet. Click **🚀 Start Simulator** in the sidebar to begin streaming live network traffic.")
+    chart_col1, chart_col2 = st.columns([2, 1])
+
+    with chart_col1:
+        st.subheader("📈 Traffic & Threat Volume Timeline")
+        time_df = df.groupby(["timestamp", "action"]).size().reset_index(name="count")
+        
+        fig_timeline = px.bar(
+            time_df,
+            x="timestamp",
+            y="count",
+            color="action",
+            color_discrete_map={
+                "blocked": "#ff7b72",
+                "already_blocked": "#d29922",
+                "allowed": "#2ea043",
+                "unblocked": "#58a6ff"
+            },
+            title="Flow Volume by Firewall Action Over Time",
+            barmode="stack"
+        )
+        fig_timeline.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="#0d1117",
+            plot_bgcolor="#161b22",
+            margin=dict(l=20, r=20, t=40, b=20),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        st.plotly_chart(fig_timeline, use_container_width=True)
+
+    with chart_col2:
+        st.subheader("🎯 Action Breakdown")
+        action_counts = df["action"].value_counts().reset_index()
+        action_counts.columns = ["action", "count"]
+        
+        fig_pie = px.pie(
+            action_counts,
+            names="action",
+            values="count",
+            color="action",
+            color_discrete_map={
+                "blocked": "#ff7b72",
+                "already_blocked": "#d29922",
+                "allowed": "#2ea043",
+                "unblocked": "#58a6ff"
+            },
+            hole=0.4
+        )
+        fig_pie.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="#0d1117",
+            plot_bgcolor="#161b22",
+            margin=dict(l=20, r=20, t=40, b=20)
+        )
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+    st.markdown("---")
+
+    st.subheader("🔥 Top Malicious IP Sources")
+    attack_ips = df[df["predicted"] == 1].groupby("src_ip").agg(
+        total_attacks=("predicted", "count"),
+        avg_confidence=("confidence", "mean"),
+        last_seen=("timestamp", "max")
+    ).reset_index().sort_values(by="total_attacks", ascending=False).head(10)
+
+    if attack_ips.empty:
+        st.write("No attack traffic detected yet.")
     else:
-        chart_col1, chart_col2 = st.columns([2, 1])
-
-        with chart_col1:
-            st.subheader("📈 Traffic & Threat Volume Timeline")
-            time_df = df.groupby(["timestamp", "action"]).size().reset_index(name="count")
-            
-            fig_timeline = px.bar(
-                time_df,
-                x="timestamp",
-                y="count",
-                color="action",
-                color_discrete_map={
-                    "blocked": "#ff7b72",
-                    "already_blocked": "#d29922",
-                    "allowed": "#2ea043",
-                    "unblocked": "#58a6ff"
-                },
-                title="Flow Volume by Firewall Action Over Time",
-                barmode="stack"
-            )
-            fig_timeline.update_layout(
-                template="plotly_dark",
-                paper_bgcolor="#0d1117",
-                plot_bgcolor="#161b22",
-                margin=dict(l=20, r=20, t=40, b=20),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-            )
-            st.plotly_chart(fig_timeline, use_container_width=True)
-
-        with chart_col2:
-            st.subheader("🎯 Action Breakdown")
-            action_counts = df["action"].value_counts().reset_index()
-            action_counts.columns = ["action", "count"]
-            
-            fig_pie = px.pie(
-                action_counts,
-                names="action",
-                values="count",
-                color="action",
-                color_discrete_map={
-                    "blocked": "#ff7b72",
-                    "already_blocked": "#d29922",
-                    "allowed": "#2ea043",
-                    "unblocked": "#58a6ff"
-                },
-                hole=0.4
-            )
-            fig_pie.update_layout(
-                template="plotly_dark",
-                paper_bgcolor="#0d1117",
-                plot_bgcolor="#161b22",
-                margin=dict(l=20, r=20, t=40, b=20)
-            )
-            st.plotly_chart(fig_pie, use_container_width=True)
-
-        st.markdown("---")
-
-        st.subheader("🔥 Top Malicious IP Sources")
-        attack_ips = df[df["predicted"] == 1].groupby("src_ip").agg(
-            total_attacks=("predicted", "count"),
-            avg_confidence=("confidence", "mean"),
-            last_seen=("timestamp", "max")
-        ).reset_index().sort_values(by="total_attacks", ascending=False).head(10)
-
-        if attack_ips.empty:
-            st.write("No attack traffic detected yet.")
-        else:
-            fig_bar = px.bar(
-                attack_ips,
-                x="total_attacks",
-                y="src_ip",
-                orientation="h",
-                color="avg_confidence",
-                color_continuous_scale="Reds",
-                title="Top 10 Attack Generating Source IPs",
-                labels={"src_ip": "Source IP Address", "total_attacks": "Attack Count", "avg_confidence": "Avg Confidence"}
-            )
-            fig_bar.update_layout(
-                template="plotly_dark",
-                paper_bgcolor="#0d1117",
-                plot_bgcolor="#161b22",
-                yaxis=dict(autorange="reversed")
-            )
-            st.plotly_chart(fig_bar, use_container_width=True)
+        fig_bar = px.bar(
+            attack_ips,
+            x="total_attacks",
+            y="src_ip",
+            orientation="h",
+            color="avg_confidence",
+            color_continuous_scale="Reds",
+            title="Top 10 Attack Generating Source IPs",
+            labels={"src_ip": "Source IP Address", "total_attacks": "Attack Count", "avg_confidence": "Avg Confidence"}
+        )
+        fig_bar.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="#0d1117",
+            plot_bgcolor="#161b22",
+            yaxis=dict(autorange="reversed")
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
 
 
 # TAB 2: Blocked IP Deny-List Management
