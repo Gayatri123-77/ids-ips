@@ -21,7 +21,7 @@ LOG_FILE = "blocked_ips.txt"
 # Page Configuration & Dark Cyberpunk Theme Setup
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="Cyberpunk IDS/IPS Live Sentinel",
+    page_title="AI-Based Network IDS/IPS",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -206,7 +206,7 @@ if st.sidebar.button("🗑️ Clear All Logs"):
 # ---------------------------------------------------------
 # Main Dashboard Content
 # ---------------------------------------------------------
-st.title("🛡️ Cyberpunk IDS/IPS Live Sentinel Dashboard")
+st.title("🛡️ AI-Based Network IDS/IPS")
 st.caption("Real-Time Machine Learning Intrusion Detection & Automated Firewall Deny-List Management")
 
 df = load_log_data()
