@@ -5,10 +5,6 @@ A machine-learning-powered Intrusion Detection & Prevention System demo, built a
 
 > 📚 This is a **learning/demo project**: it runs on a labeled dataset rather than live network traffic, and blocking is simulated (logged, not enforced on a real firewall). See [Next Steps](#-next-steps--going-further) for how to extend it toward a real deployment.
 
-# 🛡️ AI-Based Network IDS/IPS with Live Dashboard
-
-
-# 🛡️ AI-Based Network IDS/IPS with  Live Sentinel Dashboard
 
 
 
