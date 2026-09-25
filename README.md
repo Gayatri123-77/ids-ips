@@ -6,10 +6,10 @@ A machine-learning-powered Intrusion Detection & Prevention System demo, built a
 > 📚 This is a **learning/demo project**: it runs on a labeled dataset rather than live network traffic, and blocking is simulated (logged, not enforced on a real firewall). See [Next Steps](#-next-steps--going-further) for how to extend it toward a real deployment.
 
 # 🛡️ AI-Based Network IDS/IPS with Live Dashboard
->>>>>>> c003c3f52c73fdc371c282c2ac45efe691228b99
+
 
 # 🛡️ AI-Based Network IDS/IPS with  Live Sentinel Dashboard
->>>>>>> 61396e039786b5d588d94b9b5144579d142d939c
+
 
 
 
@@ -106,4 +106,4 @@ Uses [NSL-KDD](http://nsl.cs.unb.ca/NSL-KDD/), an improved, de-duplicated versio
 ## ⚠️ Disclaimer
 
 This is an educational project. Only ever point a real (non-simulated) version of this at traffic or networks you own or have explicit permission to test.
->>>>>>> c34a6279f90135a02b42e83f3f1061f5624ecd65
+
