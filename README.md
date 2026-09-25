@@ -1,4 +1,4 @@
-# 🛡️ AI-Based Network IDS/IPS with Cyberpunk Live Sentinel Dashboard
+# 🛡️ AI-Based Network IDS/IPS with  Live Sentinel Dashboard
 
 A machine-learning-powered Intrusion Detection & Prevention System with a real-time **Streamlit Live Sentinel Dashboard**. Trains a classifier on the NSL-KDD intrusion detection dataset, simulates live network traffic streams, alerts on suspicious flows, and automatically manages firewall deny-lists.
 
