@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-# ids-ips
-=======
+=
 # 🛡️ AI-Based Network IDS/IPS
 
 A machine-learning-powered Intrusion Detection & Prevention System demo, built as a hands-on learning project. Trains a classifier on the NSL-KDD intrusion detection dataset, then simulates a live network traffic stream through it — alerting on suspicious flows and "blocking" repeat offenders.
